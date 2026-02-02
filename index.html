@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NightQuest</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <div class="bg" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="brand">
+    <button class="brand__icon" id="homeBtn" type="button" aria-label="Menu principal" title="Menu principal">
+     <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+       <path d="M12 2c.6 4.3-2.7 5.9-2.7 8.4 0 1.5 1.1 2.6 2.7 2.6s2.7-1.1 2.7-2.6c0-1.3-.8-2.4-1.4-3.6 3.2 2 5.7 5 5.7 8.3 0 4.4-3.2 7.9-7 7.9s-7-3.5-7-7.9C5 10.2 8.3 5.8 12 2z" fill="currentColor"/>
+     </svg>
+    </button>
+    <span class="brand__title" id="brandTitle">New Adventure</span>
+
+    <div class="top-actions">
+      <button class="icon-btn" type="button" id="navBack" aria-label="Revenir en arrière" title="Retour">
+        <span class="icon">←</span>
+      </button>
+      <button class="icon-btn" type="button" id="navForward" aria-label="Avancer" title="Avancer">
+        <span class="icon">→</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="stage">
+    <!-- SETTINGS -->
+    <section class="screen is-active" data-screen="settings">
+      <h1 class="screen__title">Pick a setting…</h1>
+
+      <div class="card-stack" role="list">
+        <button class="choice" type="button" role="listitem" data-setting="Fantasy">
+          <span class="choice__num">1</span><span class="choice__label">Fantasy</span><span class="choice__arrow">›</span>
+        </button>
+
+        <button class="choice" type="button" role="listitem" data-setting="Mystery">
+          <span class="choice__num">2</span><span class="choice__label">Mystery</span><span class="choice__arrow">›</span>
+        </button>
+
+        <button class="choice" type="button" role="listitem" data-setting="Zombies">
+          <span class="choice__num">3</span><span class="choice__label">Zombies</span><span class="choice__arrow">›</span>
+        </button>
+
+        <button class="choice" type="button" role="listitem" data-setting="Apocalyptic">
+          <span class="choice__num">4</span><span class="choice__label">Apocalyptic</span><span class="choice__arrow">›</span>
+        </button>
+
+        <button class="choice" type="button" role="listitem" data-setting="Cyberpunk">
+          <span class="choice__num">5</span><span class="choice__label">Cyberpunk</span><span class="choice__arrow">›</span>
+        </button>
+
+        <div class="divider" aria-hidden="true"></div>
+
+        <button class="choice" type="button" role="listitem" data-action="archive">
+          <span class="choice__num">6</span><span class="choice__label">Archive</span><span class="choice__arrow">›</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- CHARACTERS -->
+    <section class="screen" data-screen="characters">
+      <h1 class="screen__title" id="charactersTitle">Select a character…</h1>
+
+      <!-- Liste générée en JS -->
+      <div class="card-stack" id="characterList" role="list"></div>
+
+      <div class="footer-hint">
+        <button class="link-btn" type="button" data-back="settings">← Back</button>
+      </div>
+    </section>
+
+    <!-- NAME -->
+    <section class="screen" data-screen="name">
+      <h1 class="screen__title">Enter your character’s name…</h1>
+
+      <div class="name-block">
+        <label class="sr-only" for="charName">Nom du personnage</label>
+        <input id="charName" class="name-input" type="text" placeholder="Type here…" maxlength="30" />
+        <div class="name-actions">
+          <button class="btn" type="button" data-back="characters">Back</button>
+          <button class="btn btn--primary" type="button" id="startBtn">Start</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- LOADING -->
+    <section class="screen" data-screen="loading">
+      <div class="loading">
+        <div class="loading__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22">
+            <path d="M12 2c.6 4.3-2.7 5.9-2.7 8.4 0 1.5 1.1 2.6 2.7 2.6s2.7-1.1 2.7-2.6c0-1.3-.8-2.4-1.4-3.6 3.2 2 5.7 5 5.7 8.3 0 4.4-3.2 7.9-7 7.9s-7-3.5-7-7.9C5 10.2 8.3 5.8 12 2z" fill="currentColor"/>
+          </svg>
+        </div>
+        <div class="loading__text">Loading…</div>
+      </div>
+    </section>
+
+    <!-- STORY -->
+    <section class="screen" data-screen="story">
+      <div class="story">
+        <div class="story__card">
+          <p class="story__lead" id="storyLead">You wake up in a dim room. Outside, distant voices rise.</p>
+          <p class="story__para" id="storyPara">A messenger pushes the door open, breathless, with urgent news.</p>
+          <p class="story__quote" id="storyQuote">“What do you do next?”</p>
+        </div>
+
+        <div class="story__actions">
+          <button class="btn btn--ghost" type="button">Take a turn</button>
+          <button class="btn btn--primary" type="button">Continue</button>
+          <button class="btn btn--ghost" type="button">Retry</button>
+          <button class="btn btn--ghost btn--danger" type="button" id="eraseBtn">Erase</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ARCHIVE (placeholder) -->
+    <section class="screen" data-screen="archive">
+      <h1 class="screen__title">Archive</h1>
+
+      <div class="archive">
+        <div class="archive__note">
+          Anciennes histoires générées par l’IA (pas encore branché au backend).
+        </div>
+
+        <div class="archive__list">
+          <div class="archive__card">
+            <div class="archive__meta">Fantasy • Knight • 2026-02-02</div>
+            <div class="archive__title">The Tower at Dawn</div>
+            <div class="archive__sub">Placeholder</div>
+          </div>
+
+          <div class="archive__card">
+            <div class="archive__meta">Zombies • Medic • 2026-02-01</div>
+            <div class="archive__title">No Signal, No Hope</div>
+            <div class="archive__sub">Placeholder</div>
+          </div>
+        </div>
+
+        <div class="footer-hint">
+          <button class="link-btn" type="button" data-back="settings">← Back</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
