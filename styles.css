@@ -471,3 +471,19 @@ body{
   padding: 0;
   cursor: pointer;
 }
+
+/* Player Input */
+.player-input{
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 0 4px;
+}
+
+.player-input .name-input{
+  flex: 1;
+}
+
+.hidden{
+  display: none !important;
+}

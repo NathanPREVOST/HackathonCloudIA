@@ -1,5 +1,56 @@
 console.log("app.js chargé");
 
+// ---- Configuration IA ----
+const SYSTEM_PROMPT = `Tu es le Maître du Jeu (Game Master) pour un jeu narratif interactif appelé NightQuest.
+
+RÈGLES :
+- Écris des réponses immersives en 2-3 paragraphes maximum
+- Décris l'environnement, les actions et leurs conséquences de manière vivante
+- Termine TOUJOURS par une question ou un choix pour le joueur (ex: "Que fais-tu ?")
+- Reste cohérent avec le thème choisi ({setting})
+- Ne brise jamais l'immersion - reste dans le personnage
+- Réponds en français
+- Utilise le présent de narration
+
+CONTEXTE : Le joueur incarne {name}, un(e) {character} dans un univers {setting}.`;
+
+let conversationHistory = [];
+
+async function callOllama(userMessage) {
+  const systemPrompt = SYSTEM_PROMPT
+    .replace(/{setting}/g, state.setting)
+    .replace(/{character}/g, state.character)
+    .replace(/{name}/g, state.name);
+
+  conversationHistory.push({ role: 'user', content: userMessage });
+
+  const response = await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'mistral:7b-instruct',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...conversationHistory
+      ],
+      stream: false
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Erreur API: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const aiResponse = data.message.content;
+  conversationHistory.push({ role: 'assistant', content: aiResponse });
+  return aiResponse;
+}
+
+function resetConversation() {
+  conversationHistory = [];
+}
+
 const screens = [...document.querySelectorAll(".screen")];
 const brandTitle = document.getElementById("brandTitle");
 
@@ -135,7 +186,7 @@ document.addEventListener("click", (e) => {
 });
 
 // ---- Start story ----
-function startStory() {
+async function startStory() {
   state.name = (charName?.value || "").trim();
   if (!state.name) {
     charName?.focus();
@@ -146,16 +197,29 @@ function startStory() {
     return;
   }
 
-  const lead = document.getElementById("storyLead");
-  const para = document.getElementById("storyPara");
-  const quote = document.getElementById("storyQuote");
-
-  lead.textContent = `You are ${state.name}, a ${state.character} in a ${state.setting} world. The air feels tense.`;
-  para.textContent = `A distant signal draws you toward an unseen conflict. Something has changed—and you’re the one in front.`;
-  quote.textContent = `“What do you do next, ${state.name}?”`;
-
   brandTitle.textContent = safeLower(state.name);
-  goLoadingThen("story");
+  showScreen("loading", true);
+  resetConversation();
+
+  try {
+    const intro = await callOllama(
+      `Commence une nouvelle aventure. Je suis ${state.name}, un(e) ${state.character} dans un monde ${state.setting}. Décris la scène d'ouverture de manière immersive.`
+    );
+
+    const lead = document.getElementById("storyLead");
+    const para = document.getElementById("storyPara");
+    const quote = document.getElementById("storyQuote");
+
+    lead.textContent = `${state.name} - ${state.character} (${state.setting})`;
+    para.textContent = intro;
+    quote.textContent = "";
+
+    showScreen("story", true);
+  } catch (err) {
+    console.error("Erreur IA:", err);
+    alert("Erreur de connexion à l'IA. Vérifiez que le serveur Ollama est actif.");
+    showScreen("name", true);
+  }
 }
 
 startBtn?.addEventListener("click", startStory);
@@ -191,11 +255,96 @@ function resetToSettings() {
 homeBtn?.addEventListener("click", resetToSettings);
 
 eraseBtn?.addEventListener("click", () => {
-  const lead = document.getElementById("storyLead");
-  const para = document.getElementById("storyPara");
-  const quote = document.getElementById("storyQuote");
+  resetConversation();
+  resetToSettings();
+});
 
-  if (lead) lead.textContent = "";
-  if (para) para.textContent = "";
-  if (quote) quote.textContent = "";
+// ---- Story Actions ----
+const storyActions = document.querySelector(".story__actions");
+
+storyActions?.addEventListener("click", async (e) => {
+  const btn = e.target.closest(".btn");
+  if (!btn) return;
+
+  const btnText = btn.textContent.trim().toLowerCase();
+  const para = document.getElementById("storyPara");
+  const playerInput = document.getElementById("playerInput");
+
+  if (btnText === "take a turn") {
+    // Afficher/masquer le champ de saisie
+    const inputContainer = document.getElementById("playerInputContainer");
+    if (inputContainer) {
+      inputContainer.classList.toggle("hidden");
+      playerInput?.focus();
+    }
+    return;
+  }
+
+  if (btnText === "continue") {
+    showScreen("loading", true);
+    try {
+      const response = await callOllama("Continue l'histoire. Fais progresser l'intrigue de manière intéressante.");
+      para.textContent = response;
+      showScreen("story", true);
+    } catch (err) {
+      console.error("Erreur IA:", err);
+      alert("Erreur de connexion à l'IA");
+      showScreen("story", true);
+    }
+    return;
+  }
+
+  if (btnText === "retry") {
+    if (conversationHistory.length >= 2) {
+      // Retirer la dernière réponse IA et le dernier message utilisateur
+      conversationHistory.pop();
+      conversationHistory.pop();
+    }
+    showScreen("loading", true);
+    try {
+      const lastUserMsg = conversationHistory.length > 0
+        ? conversationHistory[conversationHistory.length - 1]?.content
+        : "Continue l'histoire différemment.";
+      const response = await callOllama(lastUserMsg || "Recommence cette partie de l'histoire différemment.");
+      para.textContent = response;
+      showScreen("story", true);
+    } catch (err) {
+      console.error("Erreur IA:", err);
+      alert("Erreur de connexion à l'IA");
+      showScreen("story", true);
+    }
+    return;
+  }
+});
+
+// ---- Player Input Submit ----
+async function submitPlayerAction() {
+  const playerInput = document.getElementById("playerInput");
+  const para = document.getElementById("storyPara");
+  const inputContainer = document.getElementById("playerInputContainer");
+
+  const action = playerInput?.value?.trim();
+  if (!action) {
+    playerInput?.focus();
+    return;
+  }
+
+  playerInput.value = "";
+  inputContainer?.classList.add("hidden");
+  showScreen("loading", true);
+
+  try {
+    const response = await callOllama(action);
+    para.textContent = response;
+    showScreen("story", true);
+  } catch (err) {
+    console.error("Erreur IA:", err);
+    alert("Erreur de connexion à l'IA");
+    showScreen("story", true);
+  }
+}
+
+document.getElementById("playerSubmit")?.addEventListener("click", submitPlayerAction);
+document.getElementById("playerInput")?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") submitPlayerAction();
 });
