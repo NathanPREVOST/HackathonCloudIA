@@ -16,6 +16,101 @@ CONTEXTE : Le joueur incarne {name}, un(e) {character} dans un univers {setting}
 
 let conversationHistory = [];
 
+// ---- Loading Indicator ----
+function showLoading() {
+  const indicator = document.getElementById('loadingIndicator');
+  if (indicator) indicator.classList.add('active');
+}
+
+function hideLoading() {
+  const indicator = document.getElementById('loadingIndicator');
+  if (indicator) indicator.classList.remove('active');
+}
+
+// ---- Chat History ----
+function renderChatHistory() {
+  const historyEl = document.getElementById('chatHistory');
+  if (!historyEl) return;
+
+  historyEl.innerHTML = '';
+
+  // Afficher tous les messages sauf le dernier (qui est dans story__para)
+  const messagesToShow = conversationHistory.slice(0, -1);
+
+  messagesToShow.forEach(msg => {
+    const msgEl = document.createElement('div');
+    msgEl.className = `chat-message chat-message--${msg.role}`;
+
+    const roleLabel = msg.role === 'user' ? 'Vous' : 'Maître du Jeu';
+
+    msgEl.innerHTML = `
+      <div class="chat-message__role">${roleLabel}</div>
+      <div class="chat-message__content">${msg.content}</div>
+    `;
+
+    historyEl.appendChild(msgEl);
+  });
+
+  // Scroll to bottom
+  historyEl.scrollTop = historyEl.scrollHeight;
+}
+
+// ---- Streaming API Call ----
+async function callOllamaStreaming(userMessage, onChunk) {
+  const systemPrompt = SYSTEM_PROMPT
+    .replace(/{setting}/g, state.setting)
+    .replace(/{character}/g, state.character)
+    .replace(/{name}/g, state.name);
+
+  conversationHistory.push({ role: 'user', content: userMessage });
+  renderChatHistory();
+
+  const response = await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'mistral:7b-instruct',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...conversationHistory
+      ],
+      stream: true
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Erreur API: ${response.status}`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let fullResponse = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    const chunk = decoder.decode(value, { stream: true });
+    const lines = chunk.split('\n').filter(line => line.trim());
+
+    for (const line of lines) {
+      try {
+        const json = JSON.parse(line);
+        if (json.message?.content) {
+          fullResponse += json.message.content;
+          if (onChunk) onChunk(fullResponse);
+        }
+      } catch (e) {
+        // Ignore parsing errors for incomplete chunks
+      }
+    }
+  }
+
+  conversationHistory.push({ role: 'assistant', content: fullResponse });
+  return fullResponse;
+}
+
+// ---- Legacy non-streaming call (fallback) ----
 async function callOllama(userMessage) {
   const systemPrompt = SYSTEM_PROMPT
     .replace(/{setting}/g, state.setting)
@@ -23,6 +118,7 @@ async function callOllama(userMessage) {
     .replace(/{name}/g, state.name);
 
   conversationHistory.push({ role: 'user', content: userMessage });
+  renderChatHistory();
 
   const response = await fetch('/api/chat', {
     method: 'POST',
@@ -49,6 +145,8 @@ async function callOllama(userMessage) {
 
 function resetConversation() {
   conversationHistory = [];
+  const historyEl = document.getElementById('chatHistory');
+  if (historyEl) historyEl.innerHTML = '';
 }
 
 const screens = [...document.querySelectorAll(".screen")];
@@ -198,27 +296,35 @@ async function startStory() {
   }
 
   brandTitle.textContent = safeLower(state.name);
-  showScreen("loading", true);
   resetConversation();
 
+  const lead = document.getElementById("storyLead");
+  const para = document.getElementById("storyPara");
+  const quote = document.getElementById("storyQuote");
+
+  lead.textContent = `${state.name} - ${state.character} (${state.setting})`;
+  para.textContent = "";
+  para.classList.add("streaming-cursor");
+  quote.textContent = "";
+
+  showScreen("story", true);
+  showLoading();
+
   try {
-    const intro = await callOllama(
-      `Commence une nouvelle aventure. Je suis ${state.name}, un(e) ${state.character} dans un monde ${state.setting}. Décris la scène d'ouverture de manière immersive.`
+    await callOllamaStreaming(
+      `Commence une nouvelle aventure. Je suis ${state.name}, un(e) ${state.character} dans un monde ${state.setting}. Décris la scène d'ouverture de manière immersive.`,
+      (text) => {
+        para.textContent = text;
+      }
     );
-
-    const lead = document.getElementById("storyLead");
-    const para = document.getElementById("storyPara");
-    const quote = document.getElementById("storyQuote");
-
-    lead.textContent = `${state.name} - ${state.character} (${state.setting})`;
-    para.textContent = intro;
-    quote.textContent = "";
-
-    showScreen("story", true);
+    para.classList.remove("streaming-cursor");
   } catch (err) {
     console.error("Erreur IA:", err);
+    para.classList.remove("streaming-cursor");
     alert("Erreur de connexion à l'IA. Vérifiez que le serveur Ollama est actif.");
     showScreen("name", true);
+  } finally {
+    hideLoading();
   }
 }
 
@@ -281,15 +387,21 @@ storyActions?.addEventListener("click", async (e) => {
   }
 
   if (btnText === "continue") {
-    showScreen("loading", true);
+    para.textContent = "";
+    para.classList.add("streaming-cursor");
+    showLoading();
     try {
-      const response = await callOllama("Continue l'histoire. Fais progresser l'intrigue de manière intéressante.");
-      para.textContent = response;
-      showScreen("story", true);
+      await callOllamaStreaming(
+        "Continue l'histoire. Fais progresser l'intrigue de manière intéressante.",
+        (text) => { para.textContent = text; }
+      );
+      para.classList.remove("streaming-cursor");
     } catch (err) {
       console.error("Erreur IA:", err);
+      para.classList.remove("streaming-cursor");
       alert("Erreur de connexion à l'IA");
-      showScreen("story", true);
+    } finally {
+      hideLoading();
     }
     return;
   }
@@ -300,18 +412,25 @@ storyActions?.addEventListener("click", async (e) => {
       conversationHistory.pop();
       conversationHistory.pop();
     }
-    showScreen("loading", true);
+    renderChatHistory();
+    para.textContent = "";
+    para.classList.add("streaming-cursor");
+    showLoading();
     try {
       const lastUserMsg = conversationHistory.length > 0
         ? conversationHistory[conversationHistory.length - 1]?.content
         : "Continue l'histoire différemment.";
-      const response = await callOllama(lastUserMsg || "Recommence cette partie de l'histoire différemment.");
-      para.textContent = response;
-      showScreen("story", true);
+      await callOllamaStreaming(
+        lastUserMsg || "Recommence cette partie de l'histoire différemment.",
+        (text) => { para.textContent = text; }
+      );
+      para.classList.remove("streaming-cursor");
     } catch (err) {
       console.error("Erreur IA:", err);
+      para.classList.remove("streaming-cursor");
       alert("Erreur de connexion à l'IA");
-      showScreen("story", true);
+    } finally {
+      hideLoading();
     }
     return;
   }
@@ -331,16 +450,22 @@ async function submitPlayerAction() {
 
   playerInput.value = "";
   inputContainer?.classList.add("hidden");
-  showScreen("loading", true);
+  para.textContent = "";
+  para.classList.add("streaming-cursor");
+  showLoading();
 
   try {
-    const response = await callOllama(action);
-    para.textContent = response;
-    showScreen("story", true);
+    await callOllamaStreaming(
+      action,
+      (text) => { para.textContent = text; }
+    );
+    para.classList.remove("streaming-cursor");
   } catch (err) {
     console.error("Erreur IA:", err);
+    para.classList.remove("streaming-cursor");
     alert("Erreur de connexion à l'IA");
-    showScreen("story", true);
+  } finally {
+    hideLoading();
   }
 }
 

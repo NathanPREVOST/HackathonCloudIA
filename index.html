@@ -20,6 +20,10 @@
     <span class="brand__title" id="brandTitle">New Adventure</span>
 
     <div class="top-actions">
+      <div class="loading-indicator" id="loadingIndicator">
+        <div class="loading-spinner"></div>
+        <span>Génération...</span>
+      </div>
       <button class="icon-btn" type="button" id="navBack" aria-label="Revenir en arrière" title="Retour">
         <span class="icon">←</span>
       </button>
@@ -104,10 +108,14 @@
     <!-- STORY -->
     <section class="screen" data-screen="story">
       <div class="story">
-        <div class="story__card">
+        <!-- Historique des messages -->
+        <div class="chat-history" id="chatHistory"></div>
+
+        <!-- Message actuel -->
+        <div class="story__card" id="currentMessage">
           <p class="story__lead" id="storyLead">You wake up in a dim room. Outside, distant voices rise.</p>
           <p class="story__para" id="storyPara">A messenger pushes the door open, breathless, with urgent news.</p>
-          <p class="story__quote" id="storyQuote">“What do you do next?”</p>
+          <p class="story__quote" id="storyQuote">"What do you do next?"</p>
         </div>
 
         <div id="playerInputContainer" class="player-input hidden">

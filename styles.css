@@ -487,3 +487,118 @@ body{
 .hidden{
   display: none !important;
 }
+
+/* Loading Indicator (top right) */
+.loading-indicator{
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.12);
+  font-size: 13px;
+  color: rgba(255,255,255,.80);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+}
+
+.loading-indicator.active{
+  display: flex;
+}
+
+.loading-spinner{
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,.2);
+  border-top-color: rgba(255,255,255,.8);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+
+@keyframes spin{
+  to{ transform: rotate(360deg); }
+}
+
+/* Chat History */
+.chat-history{
+  width: min(760px, 92vw);
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chat-history:empty{
+  display: none;
+}
+
+.chat-message{
+  padding: 14px 18px;
+  border-radius: var(--radius);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+}
+
+.chat-message--user{
+  background: rgba(100,140,255,.12);
+  border: 1px solid rgba(100,140,255,.18);
+  align-self: flex-end;
+  max-width: 85%;
+}
+
+.chat-message--assistant{
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.08);
+  max-width: 100%;
+}
+
+.chat-message__role{
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: rgba(255,255,255,.5);
+  margin-bottom: 6px;
+}
+
+.chat-message__content{
+  font-family: var(--serif);
+  font-size: 14px;
+  line-height: 1.6;
+  color: rgba(255,255,255,.82);
+  white-space: pre-wrap;
+}
+
+/* Scrollbar styling */
+.chat-history::-webkit-scrollbar{
+  width: 6px;
+}
+
+.chat-history::-webkit-scrollbar-track{
+  background: rgba(255,255,255,.05);
+  border-radius: 3px;
+}
+
+.chat-history::-webkit-scrollbar-thumb{
+  background: rgba(255,255,255,.15);
+  border-radius: 3px;
+}
+
+.chat-history::-webkit-scrollbar-thumb:hover{
+  background: rgba(255,255,255,.25);
+}
+
+/* Streaming cursor effect */
+.streaming-cursor::after{
+  content: '▋';
+  animation: blink 1s step-end infinite;
+  color: rgba(255,255,255,.6);
+}
+
+@keyframes blink{
+  0%, 100%{ opacity: 1; }
+  50%{ opacity: 0; }
+}
